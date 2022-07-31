@@ -130,7 +130,7 @@ while True:
             data = pd.DataFrame({'ID': pd.Series(id), 'Title': pd.Series(titles), 'Description': pd.Series(description), 'Category': pd.Series(category), 'SKU': pd.Series(sku), 'Images': pd.Series(image), 'Option1 Name': pd.Series(option1_name), 'Option1 Value': pd.Series(option1_value), 'Option2 Name': pd.Series(option2_name), 'Option2 Value': pd.Series(option2_value), 'Quantity': pd.Series(quantity), 'Variant Image': pd.Series(variant_image), 'Price': pd.Series(price)})
             df = df.append(data)
             count += 1
-        if(int(current_page) > int(total_page)):
+        if(int(current_page) == int(total_page)):
             break
         browser.get(next_page)
     except:
