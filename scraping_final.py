@@ -17,34 +17,34 @@ df=pd.DataFrame()
 
 while True:
     prod_links = []
-    current_page = browser.find_element(By.XPATH,'//*[@id="js-pagebread--top-id"]/section/aside/div/p/span[2]').get_attribute('textContent')
-    total_page = browser.find_element(By.XPATH,'//*[@id="js-pagebread--top-id"]/section/aside/div/p/span[3]').get_attribute('textContent')
-    current_page_url = browser.current_url
-    next_page = browser.find_elements(By.CLASS_NAME,'js-pagbrd--next')[0].get_attribute('href')
-    seconds = time.time()
-    local_time = time.ctime(seconds)
-    with open(os.getcwd() + '\logs.txt', 'a') as log:
-        log.write(local_time + " \t " + current_page_url + '\n')
-    links = browser.find_elements(By.XPATH, './/section/article[@class="prod-artc" and @role="row"]')
-    for link in links:
-        prod_links.append(link.find_element(By.XPATH, './/a[1]').get_attribute('href'))
-    for prod in prod_links:
-        titles = []
-        category = []
-        image = ""
-        option1_name = []
-        option1_value = []
-        option2_name = []
-        option2_value = []
-        variant_image = []
-        description = []
-        id = []
-        price = []
-        sku = []
-        quantity = []
-        name = []
-        if prod != None:
-            try:
+    try:
+        current_page = browser.find_element(By.XPATH,'//*[@id="js-pagebread--top-id"]/section/aside/div/p/span[2]').get_attribute('textContent')
+        total_page = browser.find_element(By.XPATH,'//*[@id="js-pagebread--top-id"]/section/aside/div/p/span[3]').get_attribute('textContent')
+        current_page_url = browser.current_url
+        next_page = browser.find_elements(By.CLASS_NAME,'js-pagbrd--next')[0].get_attribute('href')
+        seconds = time.time()
+        local_time = time.ctime(seconds)
+        with open(os.getcwd() + '\logs.txt', 'a') as log:
+            log.write(local_time + " \t " + current_page_url + '\n')
+        links = browser.find_elements(By.XPATH, './/section/article[@class="prod-artc" and @role="row"]')
+        for link in links:
+            prod_links.append(link.find_element(By.XPATH, './/a[1]').get_attribute('href'))
+        for prod in prod_links:
+            titles = []
+            category = []
+            image = ""
+            option1_name = []
+            option1_value = []
+            option2_name = []
+            option2_value = []
+            variant_image = []
+            description = []
+            id = []
+            price = []
+            sku = []
+            quantity = []
+            name = []
+            if prod != None:
                 browser.get(prod)
                 if (browser.page_source.__contains__("Decline Offer")):
                     print("Found")
@@ -127,16 +127,16 @@ while True:
                             unique_id += 1
                             id.append(unique_id)
                 data=[id, titles, description, category, sku, image, option1_name, option1_value, option2_name, option2_value, quantity, variant_image, price]
-            except:
-                with open(os.getcwd() + '\errorlogs.txt', 'a') as log:
-                    log.write(local_time + '\t:\t' + prod + '\n')
-                continue
-        data = pd.DataFrame({'ID': pd.Series(id), 'Title': pd.Series(titles), 'Description': pd.Series(description), 'Category': pd.Series(category), 'SKU': pd.Series(sku), 'Images': pd.Series(image), 'Option1 Name': pd.Series(option1_name), 'Option1 Value': pd.Series(option1_value), 'Option2 Name': pd.Series(option2_name), 'Option2 Value': pd.Series(option2_value), 'Quantity': pd.Series(quantity), 'Variant Image': pd.Series(variant_image), 'Price': pd.Series(price)})
-        df = df.append(data)
-        count += 1
-    if(int(current_page) > int(total_page)):
-        break
-    browser.get(next_page)
+            data = pd.DataFrame({'ID': pd.Series(id), 'Title': pd.Series(titles), 'Description': pd.Series(description), 'Category': pd.Series(category), 'SKU': pd.Series(sku), 'Images': pd.Series(image), 'Option1 Name': pd.Series(option1_name), 'Option1 Value': pd.Series(option1_value), 'Option2 Name': pd.Series(option2_name), 'Option2 Value': pd.Series(option2_value), 'Quantity': pd.Series(quantity), 'Variant Image': pd.Series(variant_image), 'Price': pd.Series(price)})
+            df = df.append(data)
+            count += 1
+        if(int(current_page) > int(total_page)):
+            break
+        browser.get(next_page)
+    except:
+        with open(os.getcwd() + '\errorlogs.txt', 'a') as log:
+            log.write(local_time + '\t:\t' + prod + '\n')
+        continue
 
 df.to_csv(os.getcwd() + '\data.csv', index= False, header=True)   
 browser.close()
