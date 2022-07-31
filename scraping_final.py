@@ -44,8 +44,8 @@ while True:
         quantity = []
         name = []
         if prod != None:
-            browser.get(prod)
             try:
+                browser.get(prod)
                 if (browser.page_source.__contains__("Decline Offer")):
                     print("Found")
                     browser.find_element(By.XPATH, ' //*[ contains (text(), "Decline Offer" ) ]').click()
