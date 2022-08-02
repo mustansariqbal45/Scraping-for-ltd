@@ -3,13 +3,45 @@ from ssl import Options
 import time
 from selenium.webdriver.common.by import By
 from selenium.webdriver.firefox.options import Options
+from selenium.webdriver.support.wait import WebDriverWait
+import requests
 from selenium import webdriver
+from contextlib import suppress
+# from seleniumrequests import Firefox
 import pandas as pd
 
 options = Options()
-# options.add_argument('--headless')
-browser = webdriver.Firefox(options=options)
-browser.get('https://www.ltdcommodities.com/browse/all')
+# proxies = ['13.115.164.210:24432', '163.116.131.129:8080', '80.48.119.28:8080', '66.29.154.103:3128', '169.57.1.85:8123', '66.29.154.105:3128', '135.148.2.21:444', '135.148.2.22:444', '8.219.97.248:80', '51.250.80.131:80', '139.99.237.62:80', '47.245.33.104:12345']
+# browser = webdriver.Firefox(options=options)
+
+profile = webdriver.FirefoxProfile()
+profile.set_preference('browser.download.folderList', 1)
+profile.set_preference('browser.download.manager.showWhenStarting', False)
+profile.set_preference('browser.download.manager.focusWhenStarting', False)
+profile.set_preference('browser.download.useDownloadDir', True)
+profile.set_preference('browser.helperApps.alwaysAsk.force', False)
+profile.set_preference('browser.download.manager.alertOnEXEOpen', False)
+profile.set_preference('browser.download.manager.closeWhenDone', True)
+profile.set_preference('browser.download.manager.showAlertOnComplete', False)
+profile.set_preference('browser.download.manager.useWindow', False)
+# You will need to find the content-type of your app and set it here. We are downloading a gzip file.
+profile.set_preference('browser.helperApps.neverAsk.saveToDisk', 'application/octet-stream')
+profile.update_preferences()
+
+desired_cap = {
+ 'browser': 'Firefox',
+ 'browser_version': 'latest',
+ 'os': 'OS X',
+ 'os_version': 'Monetery',
+ 'build': 'Selenium Python Firefox Profile'
+}
+
+browser = webdriver.Firefox(desired_capabilities=desired_cap)
+browser.set_page_load_timeout(125)
+try:
+    browser.get('https://www.ltdcommodities.com/browse/all')
+except:
+    pass
 data = []
 unique_id = 0
 count = 0
@@ -17,19 +49,19 @@ df=pd.DataFrame()
 
 while True:
     prod_links = []
-    try:
-        current_page = browser.find_element(By.XPATH,'//*[@id="js-pagebread--top-id"]/section/aside/div/p/span[2]').get_attribute('textContent')
-        total_page = browser.find_element(By.XPATH,'//*[@id="js-pagebread--top-id"]/section/aside/div/p/span[3]').get_attribute('textContent')
-        current_page_url = browser.current_url
-        next_page = browser.find_elements(By.CLASS_NAME,'js-pagbrd--next')[0].get_attribute('href')
-        seconds = time.time()
-        local_time = time.ctime(seconds)
-        with open(os.getcwd() + '\logs.txt', 'a') as log:
-            log.write(local_time + " \t " + current_page_url + '\n')
-        links = browser.find_elements(By.XPATH, './/section/article[@class="prod-artc" and @role="row"]')
-        for link in links:
-            prod_links.append(link.find_element(By.XPATH, './/a[1]').get_attribute('href'))
-        for prod in prod_links:
+    current_page = browser.find_element(By.XPATH,'//*[@id="js-pagebread--top-id"]/section/aside/div/p/span[2]').get_attribute('textContent')
+    total_page = browser.find_element(By.XPATH,'//*[@id="js-pagebread--top-id"]/section/aside/div/p/span[3]').get_attribute('textContent')
+    current_page_url = browser.current_url
+    next_page = browser.find_elements(By.CLASS_NAME,'js-pagbrd--next')[0].get_attribute('href')
+    seconds = time.time()
+    local_time = time.ctime(seconds)
+    with open(os.getcwd() + r'\logs.txt', 'a') as log:
+        log.write(local_time + " \t " + current_page_url + '\n')
+    links = browser.find_elements(By.XPATH, './/section/article[@class="prod-artc" and @role="row"]')
+    for link in links:
+        prod_links.append(link.find_element(By.XPATH, './/a[1]').get_attribute('href'))
+    for prod in prod_links:
+        try:
             titles = []
             category = []
             image = ""
@@ -45,7 +77,12 @@ while True:
             quantity = []
             name = []
             if prod != None:
-                browser.get(prod)
+                try:
+                    browser.get(prod)
+                except Exception:
+                    with open(os.getcwd() + '\\urllogs.txt', 'a') as log:
+                        log.write(prod + '\n' + local_time + '\n' + '__________________________________________' + '\n' + str(Argument) + '\n__________________________________________' + '\n')
+                    continue
                 if (browser.page_source.__contains__("Decline Offer")):
                     print("Found")
                     browser.find_element(By.XPATH, ' //*[ contains (text(), "Decline Offer" ) ]').click()
@@ -130,13 +167,17 @@ while True:
             data = pd.DataFrame({'ID': pd.Series(id), 'Title': pd.Series(titles), 'Description': pd.Series(description), 'Category': pd.Series(category), 'SKU': pd.Series(sku), 'Images': pd.Series(image), 'Option1 Name': pd.Series(option1_name), 'Option1 Value': pd.Series(option1_value), 'Option2 Name': pd.Series(option2_name), 'Option2 Value': pd.Series(option2_value), 'Quantity': pd.Series(quantity), 'Variant Image': pd.Series(variant_image), 'Price': pd.Series(price)})
             df = df.append(data)
             count += 1
-        if(int(current_page) == int(total_page)):
-            break
+        except Exception as Argument:
+            with open(os.getcwd() + '\\errorlogs.txt', 'a') as log:
+                log.write(prod + '\n' + '__________________________________________' + '\n' + str(Argument) + '\n__________________________________________' + '\n')
+            continue
+    if(int(current_page) == int(total_page)):
+        break
+    try:
         browser.get(next_page)
-    except:
-        with open(os.getcwd() + '\errorlogs.txt', 'a') as log:
-            log.write(local_time + '\t:\t' + prod + '\n')
-        continue
+    except Exception:
+        with open(os.getcwd() + '\\urllogs.txt', 'a') as log:
+            log.write(prod + '\n' + local_time + '\n' + '__________________________________________' + '\n' + str(Argument) + '\n__________________________________________' + '\n')
 
-df.to_csv(os.getcwd() + '\data.csv', index= False, header=True)   
+df.to_csv(os.getcwd() + r'\data.csv', index= False, header= True)   
 browser.close()
