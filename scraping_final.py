@@ -1,12 +1,12 @@
 import os
 from ssl import Options
+import sys
 import time
+from os.path import exists
 from selenium.webdriver.common.by import By
 from selenium.webdriver.firefox.options import Options
 from selenium.webdriver.support.wait import WebDriverWait
-import requests
 from selenium import webdriver
-from contextlib import suppress
 # from seleniumrequests import Firefox
 import pandas as pd
 
@@ -14,38 +14,34 @@ options = Options()
 # proxies = ['13.115.164.210:24432', '163.116.131.129:8080', '80.48.119.28:8080', '66.29.154.103:3128', '169.57.1.85:8123', '66.29.154.105:3128', '135.148.2.21:444', '135.148.2.22:444', '8.219.97.248:80', '51.250.80.131:80', '139.99.237.62:80', '47.245.33.104:12345']
 # browser = webdriver.Firefox(options=options)
 
-profile = webdriver.FirefoxProfile()
-profile.set_preference('browser.download.folderList', 1)
-profile.set_preference('browser.download.manager.showWhenStarting', False)
-profile.set_preference('browser.download.manager.focusWhenStarting', False)
-profile.set_preference('browser.download.useDownloadDir', True)
-profile.set_preference('browser.helperApps.alwaysAsk.force', False)
-profile.set_preference('browser.download.manager.alertOnEXEOpen', False)
-profile.set_preference('browser.download.manager.closeWhenDone', True)
-profile.set_preference('browser.download.manager.showAlertOnComplete', False)
-profile.set_preference('browser.download.manager.useWindow', False)
-# You will need to find the content-type of your app and set it here. We are downloading a gzip file.
-profile.set_preference('browser.helperApps.neverAsk.saveToDisk', 'application/octet-stream')
-profile.update_preferences()
+options = webdriver.FirefoxOptions()
+options.set_preference('profile', "/Users/test/Library/Application Support/Firefox/Profiles/<name_of_your_profile>")
 
-desired_cap = {
- 'browser': 'Firefox',
- 'browser_version': 'latest',
- 'os': 'OS X',
- 'os_version': 'Monetery',
- 'build': 'Selenium Python Firefox Profile'
+caps = {
+    "os" : "OS X",
+    "osVersion" : "Monterey",
+    "buildName" : "firefoxprofile- python",
+    "sessionName" : "firefoxprofile- python",       
+    "browserName" : "Firefox",
 }
+options.set_capability('bstack:options', caps)
 
-browser = webdriver.Firefox(desired_capabilities=desired_cap)
+browser = webdriver.Firefox(options=options)
 browser.set_page_load_timeout(125)
 try:
-    browser.get('https://www.ltdcommodities.com/browse/all')
-except:
-    pass
-data = []
-unique_id = 0
-count = 0
-df=pd.DataFrame()
+    url = input("Enter the URL which you want to scrape?")
+    if url.strip() == "":
+        browser.get('https://www.ltdcommodities.com/browse/all')
+        unique_id = 0
+        count = 0
+    else:
+        df = pd.read_csv('data.csv')
+        unique_id = df.iloc[-1,1]+1
+        count = df.iloc[-1,0]+1 
+        browser.get(url)
+except Exception as ex:
+    print(str(ex))
+    sys.exit()
 
 while True:
     prod_links = []
@@ -59,9 +55,14 @@ while True:
         log.write(local_time + " \t " + current_page_url + '\n')
     links = browser.find_elements(By.XPATH, './/section/article[@class="prod-artc" and @role="row"]')
     for link in links:
-        prod_links.append(link.find_element(By.XPATH, './/a[1]').get_attribute('href'))
+        try:
+            prod_links.append(link.find_element(By.XPATH, './/a[1]').get_attribute('href'))
+        except:
+            pass
     for prod in prod_links:
         try:
+            df=pd.DataFrame()
+            data = []
             titles = []
             category = []
             image = ""
@@ -76,12 +77,13 @@ while True:
             sku = []
             quantity = []
             name = []
+            counter = []
             if prod != None:
                 try:
                     browser.get(prod)
-                except Exception:
+                except Exception as ex:
                     with open(os.getcwd() + '\\urllogs.txt', 'a') as log:
-                        log.write(prod + '\n' + local_time + '\n' + '__________________________________________' + '\n' + str(Argument) + '\n__________________________________________' + '\n')
+                        log.write(prod + '\n' + local_time + '\n' + '__________________________________________' + '\n' + str(ex) + '\n__________________________________________' + '\n')
                     continue
                 if (browser.page_source.__contains__("Decline Offer")):
                     print("Found")
@@ -101,7 +103,8 @@ while True:
                 option1 = browser.find_element(By.ID, 'js-dropdown-0--id').get_attribute('class')
                 option2 = browser.find_element(By.ID, 'js-dropdown_1--id').get_attribute('class')
                 option3 = browser.find_element(By.ID, 'js-dropdown_2--id').get_attribute('class')
-                if "hidden" in option1 and option2 and option3:
+                if "hidden" in option1 and "hidden" in option2 and "hidden" in option3:
+                    counter.append(count)
                     titles.append(browser.find_element(By.TAG_NAME,'h1').get_attribute("textContent"))
                     price.append(browser.find_element(By.CLASS_NAME,'sku-desc__price').text)
                     Variant_SKU = browser.find_element(By.CLASS_NAME, 'sku-desc__except--pin').get_attribute('textContent')
@@ -113,7 +116,7 @@ while True:
                         quantity.append("0")
                     unique_id += 1
                     id.append(unique_id)
-                elif ("hidden" in option2 and option3):
+                elif ("hidden" in option2 and "hidden" in option3):
                     Variants = browser.find_elements(By.XPATH, '//*[@id="js-dropdown-0--id"]//*[@class="prod__text--item"]')
                     # variant_count = 0
                     for variant in Variants:
@@ -125,6 +128,7 @@ while True:
                             option1_value.append(variant.get_attribute('textContent'))
                             variant_image.append(browser.find_element(By.XPATH, '//*[@class="l-HeroZoom-Cntr"]/a').get_property("href"))
                         titles.append(browser.find_element(By.TAG_NAME,'h1').get_attribute("textContent"))
+                        counter.append(count)
                         price.append(browser.find_element(By.CLASS_NAME,'sku-desc__price').text)
                         Variant_SKU = browser.find_element(By.CLASS_NAME, 'sku-desc__except--pin').get_attribute('textContent')
                         sku.append(str((Variant_SKU.strip().split(' '))[1]))
@@ -151,6 +155,7 @@ while True:
                             option1_value.append(variant_1.get_attribute('textContent'))
                             option2_name.append(browser.find_element(By.XPATH, '//*[@id="js-dropdown_2--id"]/nav/p[1]').text)
                             option2_value.append(variant_2.get_attribute('textContent'))
+                            counter.append(count)
                             titles.append(browser.find_element(By.TAG_NAME,'h1').get_attribute("textContent"))
                             variant_image.append(browser.find_element(By.XPATH, '//*[@class="l-HeroZoom-Cntr"]/a').get_property("href"))
                             price.append(browser.find_element(By.CLASS_NAME,'sku-desc__price').text)
@@ -163,21 +168,24 @@ while True:
                                 quantity.append("0")
                             unique_id += 1
                             id.append(unique_id)
-                data=[id, titles, description, category, sku, image, option1_name, option1_value, option2_name, option2_value, quantity, variant_image, price]
-            data = pd.DataFrame({'ID': pd.Series(id), 'Title': pd.Series(titles), 'Description': pd.Series(description), 'Category': pd.Series(category), 'SKU': pd.Series(sku), 'Images': pd.Series(image), 'Option1 Name': pd.Series(option1_name), 'Option1 Value': pd.Series(option1_value), 'Option2 Name': pd.Series(option2_name), 'Option2 Value': pd.Series(option2_value), 'Quantity': pd.Series(quantity), 'Variant Image': pd.Series(variant_image), 'Price': pd.Series(price)})
+                data=[counter, id, titles, description, category, sku, image, option1_name, option1_value, option2_name, option2_value, quantity, variant_image, price]
+            data = pd.DataFrame({'Count': pd.Series(counter), 'ID': pd.Series(id), 'Title': pd.Series(titles), 'Description': pd.Series(description), 'Category': pd.Series(category), 'SKU': pd.Series(sku), 'Images': pd.Series(image), 'Option 1 Name': pd.Series(option1_name), 'Option 1 Value': pd.Series(option1_value), 'Option 2 Name': pd.Series(option2_name), 'Option 2 Value': pd.Series(option2_value), 'Stock': pd.Series(quantity), 'Variant Images': pd.Series(variant_image), 'Orignal Pirce': pd.Series(price)})
             df = df.append(data)
+            if(exists("./data.csv")):
+                df.to_csv(os.getcwd() + r'\data.csv', mode='a', index= False, header= False)
+            else:
+                df.to_csv(os.getcwd() + r'\data.csv', mode='a', index= False, header= True)
             count += 1
-        except Exception as Argument:
+        except Exception as ex:
             with open(os.getcwd() + '\\errorlogs.txt', 'a') as log:
-                log.write(prod + '\n' + '__________________________________________' + '\n' + str(Argument) + '\n__________________________________________' + '\n')
+                log.write(prod + '\n' + '__________________________________________' + '\n' + str(ex) + '\n__________________________________________' + '\n')
             continue
     if(int(current_page) == int(total_page)):
         break
     try:
         browser.get(next_page)
-    except Exception:
+    except Exception as ex:
         with open(os.getcwd() + '\\urllogs.txt', 'a') as log:
-            log.write(prod + '\n' + local_time + '\n' + '__________________________________________' + '\n' + str(Argument) + '\n__________________________________________' + '\n')
+            log.write(prod + '\n' + local_time + '\n' + '__________________________________________' + '\n' + str(ex) + '\n__________________________________________' + '\n')
 
-df.to_csv(os.getcwd() + r'\data.csv', index= False, header= True)   
 browser.close()
